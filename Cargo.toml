@@ -1,0 +1,14 @@
+[package]
+name = "linkset"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []
+
+spin = ["dep:spin"]
+
+[dependencies]
+spin = { version = "0.9", optional = true }
