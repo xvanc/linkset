@@ -19,6 +19,61 @@ pub use linkset_of::LinksetOf;
 
 use core::ops::{Deref, DerefMut};
 
+/// Declare a linker set
+///
+/// # Examples
+///
+/// ```
+/// #![feature(const_mut_refs)]
+///
+/// linkset::declare!(TEST_SET: u32);
+///
+/// linkset::entry!(TEST_SET, u32, 1);
+/// linkset::entry!(TEST_SET, u32, 2);
+/// linkset::entry!(TEST_SET, u32, 3);
+///
+/// fn main() {
+///     for entry in &TEST_SET {
+///         println!("{entry}");
+///     }
+/// }
+/// ```
+#[allow(clippy::needless_doctest_main)]
+pub macro declare {
+    ($vis:vis $name:ident: $t:ty) => {
+        #[allow(non_upper_case_globals)]
+        $vis static $name: Linkset<$t> = declare!($name: $t |set| set);
+        declare_weak!($name);
+    },
+
+    ($name:ident: $t:ty |$set:ident| $value:expr) => {{
+       const _: () = {
+           #[export_name = concat!("__linkset_set_", stringify!($name))]
+           static GUARANTEE_SET_IS_UNIQUE: () = ();
+       };
+
+       #[allow(improper_ctypes)]
+       extern "C" {
+           #[link_name = concat!("__start___linkset_", stringify!($name))]
+           static mut set_start: Entry<$t>;
+           #[link_name = concat!("__stop___linkset_", stringify!($name))]
+           static mut set_stop: Entry<$t>;
+       }
+
+       let $set = unsafe {
+           Linkset::from_raw_parts(
+               core::ptr::addr_of_mut!(set_start),
+               core::ptr::addr_of_mut!(set_stop),
+           )
+       };
+
+       const fn check_linkset<T: LinksetOf<$t>>(set: T) -> T {
+           set
+       }
+       check_linkset($value)
+   }},
+}
+
 pub macro declare_weak($name:ident) {
     ::core::arch::global_asm!(
         concat!(".weak __start___linkset_", stringify!($name)),
@@ -26,45 +81,9 @@ pub macro declare_weak($name:ident) {
     );
 }
 
-pub macro declare($vis:vis $name:ident: $t:ty) {
-    #[allow(non_upper_case_globals)]
-    $vis static $name: Linkset<$t> = declare_in!($name: $t |set| set);
-    declare_weak!($name);
-}
-
-/// Declare a linker set wrapped within another type
-pub macro declare_in(
-     $name:ident: $t:ty |$set:ident| $value:expr
-) {{
-    const _: () = {
-        #[export_name = concat!("__linkset_set_", stringify!($name))]
-        static GUARANTEE_SET_IS_UNIQUE: () = ();
-    };
-
-    #[allow(improper_ctypes)]
-    extern "C" {
-        #[link_name = concat!("__start___linkset_", stringify!($name))]
-        static mut set_start: Entry<$t>;
-        #[link_name = concat!("__stop___linkset_", stringify!($name))]
-        static mut set_stop: Entry<$t>;
-    }
-
-    let $set = unsafe {
-        Linkset::from_raw_parts(
-            core::ptr::addr_of_mut!(set_start),
-            core::ptr::addr_of_mut!(set_stop),
-        )
-    };
-
-    const fn check_linkset<T: LinksetOf<$t>>(set: T) -> T {
-        set
-    }
-    check_linkset($value)
-}}
-
 /// Declare an entry in a linker set
 ///
-/// ```
+/// ```ignore
 /// entry!($set:ident: $t:ty, $value:expr);
 /// ```
 ///
