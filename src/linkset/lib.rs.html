@@ -168,6 +168,25 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
 </pre></div><pre class="rust"><code><span class="comment">/*
  * Copyright (c) 2023 xvanc and contributors
  * SPDX-License-Identifier: BSD-3-Clause
@@ -189,6 +208,61 @@
 
 <span class="kw">use </span>core::ops::{Deref, DerefMut};
 
+<span class="doccomment">/// Declare a linker set
+///
+/// # Examples
+///
+/// ```
+/// #![feature(const_mut_refs)]
+///
+/// linkset::declare!(TEST_SET: u32);
+///
+/// linkset::entry!(TEST_SET, u32, 1);
+/// linkset::entry!(TEST_SET, u32, 2);
+/// linkset::entry!(TEST_SET, u32, 3);
+///
+/// fn main() {
+///     for entry in &amp;TEST_SET {
+///         println!(&quot;{entry}&quot;);
+///     }
+/// }
+/// ```
+</span><span class="attr">#[allow(clippy::needless_doctest_main)]
+</span><span class="kw">pub macro </span>declare {
+    (<span class="macro-nonterminal">$vis</span>:vis <span class="macro-nonterminal">$name</span>:ident: <span class="macro-nonterminal">$t</span>:ty) =&gt; {
+        <span class="attr">#[allow(non_upper_case_globals)]
+        </span><span class="macro-nonterminal">$vis </span><span class="kw">static </span><span class="macro-nonterminal">$name</span>: Linkset&lt;<span class="macro-nonterminal">$t</span>&gt; = <span class="macro">declare!</span>(<span class="macro-nonterminal">$name</span>: <span class="macro-nonterminal">$t </span>|set| set);
+        <span class="macro">declare_weak!</span>(<span class="macro-nonterminal">$name</span>);
+    },
+
+    (<span class="macro-nonterminal">$name</span>:ident: <span class="macro-nonterminal">$t</span>:ty |<span class="macro-nonterminal">$set</span>:ident| <span class="macro-nonterminal">$value</span>:expr) =&gt; {{
+       <span class="kw">const _</span>: () = {
+           <span class="attr">#[export_name = <span class="macro">concat!</span>(<span class="string">&quot;__linkset_set_&quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$name</span>))]
+           </span><span class="kw">static </span>GUARANTEE_SET_IS_UNIQUE: () = ();
+       };
+
+       <span class="attr">#[allow(improper_ctypes)]
+       </span><span class="kw">extern </span><span class="string">&quot;C&quot; </span>{
+           <span class="attr">#[link_name = <span class="macro">concat!</span>(<span class="string">&quot;__start___linkset_&quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$name</span>))]
+           </span><span class="kw">static </span><span class="kw-2">mut </span>set_start: Entry&lt;<span class="macro-nonterminal">$t</span>&gt;;
+           <span class="attr">#[link_name = <span class="macro">concat!</span>(<span class="string">&quot;__stop___linkset_&quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$name</span>))]
+           </span><span class="kw">static </span><span class="kw-2">mut </span>set_stop: Entry&lt;<span class="macro-nonterminal">$t</span>&gt;;
+       }
+
+       <span class="kw">let </span><span class="macro-nonterminal">$set </span>= <span class="kw">unsafe </span>{
+           Linkset::from_raw_parts(
+               <span class="macro">core::ptr::addr_of_mut!</span>(set_start),
+               <span class="macro">core::ptr::addr_of_mut!</span>(set_stop),
+           )
+       };
+
+       <span class="kw">const fn </span>check_linkset&lt;T: LinksetOf&lt;<span class="macro-nonterminal">$t</span>&gt;&gt;(set: T) -&gt; T {
+           set
+       }
+       check_linkset(<span class="macro-nonterminal">$value</span>)
+   }},
+}
+
 <span class="kw">pub macro </span>declare_weak(<span class="macro-nonterminal">$name</span>:ident) {
     <span class="macro">::core::arch::global_asm!</span>(
         <span class="macro">concat!</span>(<span class="string">&quot;.weak __start___linkset_&quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$name</span>)),
@@ -196,45 +270,9 @@
     );
 }
 
-<span class="kw">pub macro </span>declare(<span class="macro-nonterminal">$vis</span>:vis <span class="macro-nonterminal">$name</span>:ident: <span class="macro-nonterminal">$t</span>:ty) {
-    <span class="attr">#[allow(non_upper_case_globals)]
-    </span><span class="macro-nonterminal">$vis </span><span class="kw">static </span><span class="macro-nonterminal">$name</span>: Linkset&lt;<span class="macro-nonterminal">$t</span>&gt; = <span class="macro">declare_in!</span>(<span class="macro-nonterminal">$name</span>: <span class="macro-nonterminal">$t </span>|set| set);
-    <span class="macro">declare_weak!</span>(<span class="macro-nonterminal">$name</span>);
-}
-
-<span class="doccomment">/// Declare a linker set wrapped within another type
-</span><span class="kw">pub macro </span>declare_in(
-     <span class="macro-nonterminal">$name</span>:ident: <span class="macro-nonterminal">$t</span>:ty |<span class="macro-nonterminal">$set</span>:ident| <span class="macro-nonterminal">$value</span>:expr
-) {{
-    <span class="kw">const _</span>: () = {
-        <span class="attr">#[export_name = <span class="macro">concat!</span>(<span class="string">&quot;__linkset_set_&quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$name</span>))]
-        </span><span class="kw">static </span>GUARANTEE_SET_IS_UNIQUE: () = ();
-    };
-
-    <span class="attr">#[allow(improper_ctypes)]
-    </span><span class="kw">extern </span><span class="string">&quot;C&quot; </span>{
-        <span class="attr">#[link_name = <span class="macro">concat!</span>(<span class="string">&quot;__start___linkset_&quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$name</span>))]
-        </span><span class="kw">static </span><span class="kw-2">mut </span>set_start: Entry&lt;<span class="macro-nonterminal">$t</span>&gt;;
-        <span class="attr">#[link_name = <span class="macro">concat!</span>(<span class="string">&quot;__stop___linkset_&quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$name</span>))]
-        </span><span class="kw">static </span><span class="kw-2">mut </span>set_stop: Entry&lt;<span class="macro-nonterminal">$t</span>&gt;;
-    }
-
-    <span class="kw">let </span><span class="macro-nonterminal">$set </span>= <span class="kw">unsafe </span>{
-        Linkset::from_raw_parts(
-            <span class="macro">core::ptr::addr_of_mut!</span>(set_start),
-            <span class="macro">core::ptr::addr_of_mut!</span>(set_stop),
-        )
-    };
-
-    <span class="kw">const fn </span>check_linkset&lt;T: LinksetOf&lt;<span class="macro-nonterminal">$t</span>&gt;&gt;(set: T) -&gt; T {
-        set
-    }
-    check_linkset(<span class="macro-nonterminal">$value</span>)
-}}
-
 <span class="doccomment">/// Declare an entry in a linker set
 ///
-/// ```
+/// ```ignore
 /// entry!($set:ident: $t:ty, $value:expr);
 /// ```
 ///
