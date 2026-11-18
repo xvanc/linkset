@@ -1,0 +1,1 @@
+rd_("AoReturns the argument unchanged.0BaCalls <code>U::from(self)</code>.0B`Declare an entry in a linker setAdDeclare a linker setC`Types which wrap a <code>Linkset&lt;T&gt;</code>C`Create a <code>Linkset</code> from its raw parts")

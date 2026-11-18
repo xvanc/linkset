@@ -1,4 +1,2 @@
-var srcIndex = JSON.parse('{\
-"linkset":["",[],["entry.rs","lib.rs","linkset_of.rs"]]\
-}');
-createSrcSidebar();
+createSrcSidebar('[["linkset",["",[],["entry.rs","lib.rs","linkset_of.rs"]]]]');
+//{"start":19,"fragment_lengths":[57]}
