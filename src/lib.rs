@@ -4,7 +4,7 @@
  */
 
 #![no_std]
-#![feature(decl_macro, const_mut_refs, ptr_internals)]
+#![feature(decl_macro, const_mut_refs)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

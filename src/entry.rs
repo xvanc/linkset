@@ -8,19 +8,22 @@ use core::{
     cmp::Ordering,
     fmt::{Debug, Display},
     hash::Hash,
+    marker::PhantomData,
     ops::{Deref, DerefMut},
-    ptr::Unique,
+    ptr::NonNull,
 };
 
 #[repr(transparent)]
 pub struct Entry<T> {
-    pub(crate) value: Unique<T>,
+    pub(crate) value: NonNull<T>,
+    _marker: PhantomData<T>,
 }
 
 impl<T> Entry<T> {
     pub const fn new(value: &'static mut T) -> Entry<T> {
         Self {
-            value: unsafe { Unique::new_unchecked(value) },
+            value: NonNull::from_mut(value),
+            _marker: PhantomData,
         }
     }
 
